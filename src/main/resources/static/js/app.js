@@ -1,0 +1,1 @@
+document.getElementById('check').addEventListener('click',async()=>{const out=document.getElementById('result');try{const r=await fetch('/api/health');out.textContent=JSON.stringify(await r.json(),null,2)}catch(e){out.textContent='Cannot reach server: '+e.message}});
