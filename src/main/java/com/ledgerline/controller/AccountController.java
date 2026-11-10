@@ -2,6 +2,7 @@
 package com.ledgerline.controller;
 
 import com.ledgerline.entity.Account;
+import com.ledgerline.entity.LedgerEntry;
 import com.ledgerline.service.AccountService;
 
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/accounts")
@@ -59,5 +61,26 @@ public class AccountController {
                 .toList();
 
         return ResponseEntity.ok(accounts);
+    }
+
+    @GetMapping("/{accountNumber}/statement")
+    @PreAuthorize("hasRole('ACCOUNT_HOLDER')")
+    public ResponseEntity<?> statement(@PathVariable String accountNumber,
+                                       Authentication authentication) {
+        List<Map<String, Object>> rows = accountService
+            .getStatement(authentication.getName(), accountNumber)
+            .stream()
+            .map(entry -> Map.<String, Object>of(
+                "entryId", entry.getId(),
+                "transactionReference", entry.getTransaction().getReference(),
+                "transactionType", entry.getTransaction().getType().name(),
+                "status", entry.getTransaction().getStatus().name(),
+                "entryType", entry.getEntryType().name(),
+                "amount", entry.getAmount(),
+                "balanceAfter", entry.getBalanceAfter(),
+                "actor", entry.getActor().getUsername(),
+                "createdAt", entry.getCreatedAt().toString()
+            )).toList();
+        return ResponseEntity.ok(rows);
     }
 }

@@ -61,6 +61,7 @@ docker compose down -v
 
 - `GET /api/health` — public health check
 - `POST /api/auth/register` — register an account-holder user
+- `GET /api/auth/me` — current authenticated username and role
 - `POST /api/accounts` — create an account (HTTP Basic; ACCOUNT_HOLDER)
 - `GET /api/accounts/my` — list the signed-in holder's accounts
 - `POST /api/transactions/deposit/{accountNumber}` — deposit; requires `Idempotency-Key`
@@ -86,3 +87,36 @@ Use HTTP Basic authentication with the registered account-holder username and pa
 This source snapshot contains registration, account creation/listing, deposit, withdrawal, transfer, account ownership checks, pessimistic account-row locking, request idempotency records, transaction records and ledger-entry records.
 
 This is not yet a production banking system or a fully verified challenge submission. In particular, admin/auditor workflows, statement endpoints, integration tests that prove race conditions and money conservation, stronger database-level append-only enforcement, production authentication (for example JWT/TLS/rate limiting), deployment to a public host, and a completed threat/prompt evidence trail still need implementation and verification. Do not use real funds or production credentials.
+
+
+## Added role-aware views
+- `GET /api/accounts/{accountNumber}/statement` — account-holder statement; verifies account ownership.
+- `GET /api/audit/ledger` — read-only global ledger for ADMIN and AUDITOR roles.
+- `GET /api/admin/overview` — basic counts for ADMIN.
+
+## Optional first administrator bootstrap
+Set all three variables on the application service before first start:
+- `LEDGERLINE_ADMIN_USERNAME`
+- `LEDGERLINE_ADMIN_EMAIL`
+- `LEDGERLINE_ADMIN_PASSWORD` (at least 12 characters)
+
+The bootstrap creates an ADMIN only if that username and email do not already exist. Public registration always creates ACCOUNT_HOLDER users. Remove the bootstrap variables after creating the administrator. Never commit their values.
+
+## Important verification note
+The dashboard is a lightweight browser client using HTTP Basic authentication. Credentials are held in page memory only and are cleared on sign-out or refresh. Use HTTPS in deployment. Before treating this as a completed challenge submission, run real MySQL integration tests for replay, concurrent withdrawals, money conservation and account isolation, and enforce append-only ledger permissions at the database layer. The entity callbacks alone do not prevent a privileged database user from changing rows.
+
+
+## Database-level append-only enforcement
+After the first deployment has created the `ledger_entries` table, connect to the Railway MySQL database as a database administrator and execute `database/ledger_immutability.sql`. The triggers reject normal SQL UPDATE and DELETE operations on ledger rows. Keep database administrator credentials separate from the application user and do not grant the application user permission to drop triggers.
+
+## Integration tests
+`LedgerLineIntegrityIT` uses Testcontainers with MySQL 8.4. Run it with Docker available:
+
+```powershell
+mvn -Dtest=LedgerLineIntegrityIT test
+```
+
+The tests cover idempotent replay, changed-payload conflict, concurrent withdrawals, transfer conservation, statement postings and cross-user transfer authorization. If Docker is unavailable, Testcontainers is configured to skip these integration tests; a skipped test is not evidence that the requirement passed.
+
+### Provision an auditor account
+Register the intended auditor through the normal registration endpoint, then run `database/promote_auditor.sql` as a database administrator after replacing the placeholder username. Public registration intentionally cannot choose an elevated role. The auditor can call `GET /api/audit/ledger` but cannot call account-holder transaction endpoints.

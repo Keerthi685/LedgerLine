@@ -30,6 +30,9 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/ledgerline_db
       DB_USERNAME: ledgerline_user
       DB_PASSWORD: ${DB_PASSWORD}
+      LEDGERLINE_ADMIN_USERNAME: ${LEDGERLINE_ADMIN_USERNAME:-}
+      LEDGERLINE_ADMIN_EMAIL: ${LEDGERLINE_ADMIN_EMAIL:-}
+      LEDGERLINE_ADMIN_PASSWORD: ${LEDGERLINE_ADMIN_PASSWORD:-}
     ports:
       - "8080:8080"
 

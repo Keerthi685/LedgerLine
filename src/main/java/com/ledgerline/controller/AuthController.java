@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
 import java.util.Map;
 
@@ -78,5 +79,12 @@ public class AuthController {
                 "username", user.getUsername(),
                 "role", user.getRole().name()
             ));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> me(Authentication authentication) {
+        AppUser user = userRepository.findByUsername(authentication.getName())
+            .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
+        return ResponseEntity.ok(Map.of("username", user.getUsername(), "role", user.getRole().name()));
     }
 }
